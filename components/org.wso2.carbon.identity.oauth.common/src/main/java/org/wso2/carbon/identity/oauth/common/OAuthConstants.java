@@ -858,8 +858,6 @@ public final class OAuthConstants {
             public static final String REFRESH_TOKEN_STATE = "refresh token state";
             public static final String REFRESH_TOKEN_ISSUED_TIME = "refresh token issued time";
             public static final String REFRESH_TOKEN_VALIDITY_PERIOD = "refresh token validity period (ms)";
-            /* Only the hash of a refresh token is ever logged and only when token logging is explicitly
-             permitted, since refresh tokens themselves cannot be logged. */
             public static final String REFRESH_TOKEN_HASH = "refresh token hash";
             public static final String ERROR_CODE = "error code";
         }

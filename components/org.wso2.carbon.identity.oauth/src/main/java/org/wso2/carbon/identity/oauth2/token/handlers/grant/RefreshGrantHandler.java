@@ -141,13 +141,6 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                     ", Authorized User : " + validationBean.getAuthorizedUser() +
                     ", Token Scope : " + OAuth2Util.buildScopeString(validationBean.getScope()));
         }
-        if (LoggerUtils.isDiagnosticLogsEnabled()) {
-            DiagnosticLog.DiagnosticLogBuilder diagnosticLogBuilder = getRefreshTokenValidationLogBuilder(tokenReq,
-                    validationBean);
-            diagnosticLogBuilder.resultMessage("Refresh token validation is successful.")
-                    .resultStatus(DiagnosticLog.ResultStatus.SUCCESS);
-            LoggerUtils.triggerDiagnosticLogEvent(diagnosticLogBuilder);
-        }
         setPropertiesForTokenGeneration(tokReqMsgCtx, validationBean);
         return true;
     }
@@ -228,6 +221,10 @@ public class RefreshGrantHandler extends AbstractAuthorizationGrantHandler {
                     .createAccessTokenBean(tokReqMsgCtx, tokenReq, validationBean, getTokenType(tokReqMsgCtx));
         } catch (IllegalArgumentException e) {
             if (StringUtils.equals(OAuth2Util.ACCESS_TOKEN_IS_NOT_ACTIVE_ERROR_MESSAGE, e.getMessage())) {
+                logRefreshTokenValidationFailure("The access token issued against the provided refresh token is no " +
+                        "longer active, hence a new access token could not be issued against the refresh token. A " +
+                        "new refresh token needs to be obtained by re-authenticating the user.", tokenReq,
+                        validationBean);
                 return handleError(OAuth2ErrorCodes.INVALID_GRANT, "Refresh token is expired.", tokenReq);
             }
             throw e;

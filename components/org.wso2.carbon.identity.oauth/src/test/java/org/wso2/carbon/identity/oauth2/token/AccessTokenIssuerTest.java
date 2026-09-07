@@ -233,6 +233,49 @@ public class AccessTokenIssuerTest {
     }
 
     @Test
+    public void testUnauthorizedAccessDelegationIsRecordedAsADiagnosticLog() throws Exception {
+
+        AuthorizationGrantHandler handler = Mockito.mock(AuthorizationGrantHandler.class);
+        OAuth2AccessTokenReqDTO req = new OAuth2AccessTokenReqDTO();
+        req.setClientId("test_client_id");
+        req.setGrantType("refresh_token");
+        OAuthTokenReqMessageContext ctx = new OAuthTokenReqMessageContext(req);
+
+        when(handler.isOfTypeApplicationUser(any(OAuthTokenReqMessageContext.class))).thenReturn(true);
+        when(handler.validateGrant(any(OAuthTokenReqMessageContext.class))).thenReturn(true);
+        // The grant itself is valid, but the application is not authorized to use it.
+        when(handler.authorizeAccessDelegation(any(OAuthTokenReqMessageContext.class))).thenReturn(false);
+
+        try (MockedStatic<LoggerUtils> loggerUtilsMock = Mockito.mockStatic(LoggerUtils.class)) {
+
+            loggerUtilsMock.when(LoggerUtils::isDiagnosticLogsEnabled).thenReturn(true);
+
+            AccessTokenIssuer issuer = Mockito.mock(AccessTokenIssuer.class, Mockito.CALLS_REAL_METHODS);
+            Method method = AccessTokenIssuer.class.getDeclaredMethod("validateGrantAndIssueToken",
+                OAuth2AccessTokenReqDTO.class, OAuthTokenReqMessageContext.class,
+                OAuth2AccessTokenRespDTO.class, AuthorizationGrantHandler.class,
+                String.class, OAuthAppDO.class);
+            method.setAccessible(true);
+            method.invoke(issuer, req, ctx, null, handler, "tenant", null);
+
+            ArgumentCaptor<DiagnosticLog.DiagnosticLogBuilder> captor =
+                ArgumentCaptor.forClass(DiagnosticLog.DiagnosticLogBuilder.class);
+            loggerUtilsMock.verify(() -> LoggerUtils.triggerDiagnosticLogEvent(captor.capture()));
+            DiagnosticLog diagnosticLog = captor.getValue().build();
+
+            Assert.assertEquals(diagnosticLog.getResultStatus(), DiagnosticLog.ResultStatus.FAILED.name(),
+                "An unauthorized access delegation should be recorded as a FAILED entry.");
+            Assert.assertEquals(diagnosticLog.getActionId(),
+                OAuthConstants.LogConstants.ActionIDs.ISSUE_ACCESS_TOKEN);
+            Assert.assertEquals(
+                diagnosticLog.getInput().get(OAuthConstants.LogConstants.InputKeys.GRANT_TYPE), "refresh_token");
+            Assert.assertTrue(
+                diagnosticLog.getResultMessage().contains("not authorized to use the provided grant type"),
+                "The log should state that the application is not authorized to use the grant type.");
+        }
+    }
+
+    @Test
     public void testHandleTokenBindingForRefreshTokenGrant() throws Exception {
 
         OAuth2AccessTokenReqDTO tokenReqDTO = new OAuth2AccessTokenReqDTO();
