@@ -854,6 +854,12 @@ public final class OAuthConstants {
             public static final String IMPERSONATOR = "impersonator";
             public static final String ACTOR = "actor";
             public static final String REQUESTED_AUTHORIZATION_DETAILS = "requested authorization details";
+            public static final String TOKEN_ID = "token id";
+            public static final String REFRESH_TOKEN_STATE = "refresh token state";
+            public static final String REFRESH_TOKEN_ISSUED_TIME = "refresh token issued time";
+            public static final String REFRESH_TOKEN_VALIDITY_PERIOD = "refresh token validity period (ms)";
+            public static final String REFRESH_TOKEN_HASH = "refresh token hash";
+            public static final String ERROR_CODE = "error code";
         }
 
         /**

@@ -78,7 +78,7 @@ public class DefaultRefreshTokenGrantProcessor implements RefreshTokenGrantProce
         OAuth2AccessTokenReqDTO tokenReq = tokenReqMessageContext.getOauth2AccessTokenReqDTO();
         RefreshTokenValidationDataDO validationBean = OAuthTokenPersistenceFactory.getInstance().getTokenManagementDAO()
                 .validateRefreshToken(tokenReq.getClientId(), tokenReq.getRefreshToken());
-        validatePersistedAccessToken(validationBean, tokenReq.getClientId());
+        validatePersistedAccessToken(validationBean, tokenReq);
         validateReuseRefreshToken(validationBean, tokenReq.getClientId(), tokenReq.getTenantDomain());
         return validationBean;
     }
@@ -361,12 +361,26 @@ public class DefaultRefreshTokenGrantProcessor implements RefreshTokenGrantProce
         return accessTokenDO;
     }
 
-    private boolean validatePersistedAccessToken(RefreshTokenValidationDataDO validationBean, String clientId)
+    private boolean validatePersistedAccessToken(RefreshTokenValidationDataDO validationBean,
+                                                 OAuth2AccessTokenReqDTO tokenReq)
             throws IdentityOAuth2Exception {
 
         if (validationBean.getAccessToken() == null) {
             if (log.isDebugEnabled()) {
-                log.debug(String.format("Invalid Refresh Token provided for Client with Client Id : %s", clientId));
+                log.debug(String.format("Invalid Refresh Token provided for Client with Client Id : %s",
+                        tokenReq.getClientId()));
+            }
+            if (LoggerUtils.isDiagnosticLogsEnabled()) {
+                LoggerUtils.triggerDiagnosticLogEvent(new DiagnosticLog.DiagnosticLogBuilder(
+                        OAuthConstants.LogConstants.OAUTH_INBOUND_SERVICE,
+                        OAuthConstants.LogConstants.ActionIDs.VALIDATE_REFRESH_TOKEN)
+                        .inputParam(LogConstants.InputKeys.CLIENT_ID, tokenReq.getClientId())
+                        .inputParam(LogConstants.InputKeys.TENANT_DOMAIN, tokenReq.getTenantDomain())
+                        .resultMessage("The provided refresh token is invalid. No token was found for the given " +
+                                "refresh token and client id combination. The refresh token could have been " +
+                                "issued for a different application, already revoked or cleaned up after expiry.")
+                        .logDetailLevel(DiagnosticLog.LogDetailLevel.APPLICATION)
+                        .resultStatus(DiagnosticLog.ResultStatus.FAILED));
             }
             throw new IdentityOAuth2Exception("Persisted access token data not found");
         }

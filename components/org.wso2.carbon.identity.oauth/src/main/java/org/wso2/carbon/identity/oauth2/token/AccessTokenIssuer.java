@@ -509,6 +509,18 @@ public class AccessTokenIssuer {
             if (log.isDebugEnabled()) {
                 log.debug("Invalid Grant provided by the client Id: " + tokenReqDTO.getClientId());
             }
+            // The internal error message is not logged since it is not guaranteed to be free of user identifiers.
+            if (LoggerUtils.isDiagnosticLogsEnabled()) {
+                LoggerUtils.triggerDiagnosticLogEvent(new DiagnosticLog.DiagnosticLogBuilder(
+                        OAuthConstants.LogConstants.OAUTH_INBOUND_SERVICE,
+                        OAuthConstants.LogConstants.ActionIDs.ISSUE_ACCESS_TOKEN)
+                        .inputParam(LogConstants.InputKeys.CLIENT_ID, tokenReqDTO.getClientId())
+                        .inputParam(OAuthConstants.LogConstants.InputKeys.GRANT_TYPE, grantType)
+                        .inputParam(OAuthConstants.LogConstants.InputKeys.ERROR_CODE, errorCode)
+                        .resultMessage("Authorization grant validation failed for the provided grant type.")
+                        .logDetailLevel(DiagnosticLog.LogDetailLevel.APPLICATION)
+                        .resultStatus(DiagnosticLog.ResultStatus.FAILED));
+            }
             tokenRespDTO = handleError(errorCode, error, tokenReqDTO);
             setResponseHeaders(tokReqMsgCtx, tokenRespDTO);
             triggerPostListeners(tokenReqDTO, tokenRespDTO, tokReqMsgCtx, isRefreshRequest);
@@ -519,6 +531,16 @@ public class AccessTokenIssuer {
         if (!isAuthorized) {
             if (log.isDebugEnabled()) {
                 log.debug("Invalid authorization for client Id : " + tokenReqDTO.getClientId());
+            }
+            if (LoggerUtils.isDiagnosticLogsEnabled()) {
+                LoggerUtils.triggerDiagnosticLogEvent(new DiagnosticLog.DiagnosticLogBuilder(
+                        OAuthConstants.LogConstants.OAUTH_INBOUND_SERVICE,
+                        OAuthConstants.LogConstants.ActionIDs.ISSUE_ACCESS_TOKEN)
+                        .inputParam(LogConstants.InputKeys.CLIENT_ID, tokenReqDTO.getClientId())
+                        .inputParam(OAuthConstants.LogConstants.InputKeys.GRANT_TYPE, grantType)
+                        .resultMessage("The application is not authorized to use the provided grant type.")
+                        .logDetailLevel(DiagnosticLog.LogDetailLevel.APPLICATION)
+                        .resultStatus(DiagnosticLog.ResultStatus.FAILED));
             }
             tokenRespDTO = handleError(OAuthError.TokenResponse.UNAUTHORIZED_CLIENT,
                     "Unauthorized Client!", tokenReqDTO);
